@@ -2,7 +2,6 @@
 	import { goto } from '$app/navigation';
 	import AppDialog from '$lib/components/AppDialog.svelte';
 	import { onDestroy, onMount } from 'svelte';
-	import QrScanner from 'qr-scanner';
 
 	type ClientState = {
 		baseURL?: string;
@@ -53,7 +52,13 @@
 	let selectedCameraId = $state('');
 	let cameraBusy = $state(false);
 	let video: HTMLVideoElement | null = null;
-	let scanner: QrScanner | null = null;
+	let QrScanner: typeof import('qr-scanner').default | null = null;
+	let scanner: import('qr-scanner').default | null = null;
+
+	const loadQrScanner = async () => {
+		QrScanner ??= (await import('qr-scanner')).default;
+		return QrScanner;
+	};
 
 	const officialSessionStorageKey = (id: string) => `betterzeriya:${id}:official-session`;
 
@@ -175,7 +180,8 @@
 
 	const loadCameras = async () => {
 		try {
-			const nextCameras = await QrScanner.listCameras(true);
+			const Scanner = await loadQrScanner();
+			const nextCameras = await Scanner.listCameras(true);
 			cameras = nextCameras;
 			if (!selectedCameraId && nextCameras.length > 0) {
 				const environmentCamera =
@@ -225,7 +231,8 @@
 
 		try {
 			if (!scanner) {
-				scanner = new QrScanner(
+				const Scanner = await loadQrScanner();
+				scanner = new Scanner(
 					video,
 					(result) => {
 						const value = result.data;
