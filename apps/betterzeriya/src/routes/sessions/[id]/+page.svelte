@@ -900,7 +900,7 @@
 	</section>
 
 	<nav
-		class="fixed right-0 bottom-0 left-0 z-20 grid grid-cols-6 gap-1 border-t border-slate-900/10 bg-white/95 px-[max(8px,env(safe-area-inset-left))] pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur-2xl min-[901px]:sticky min-[901px]:top-6 min-[901px]:right-auto min-[901px]:bottom-auto min-[901px]:left-auto min-[901px]:col-start-1 min-[901px]:row-start-1 min-[901px]:row-span-4 min-[901px]:flex min-[901px]:min-h-[calc(100svh-48px)] min-[901px]:flex-col min-[901px]:self-start min-[901px]:border-t-0 min-[901px]:border-r min-[901px]:bg-transparent min-[901px]:p-0 min-[901px]:pr-3.5 min-[901px]:backdrop-blur-none"
+		class="fixed right-0 bottom-0 left-0 z-20 grid grid-cols-5 gap-1 border-t border-slate-900/10 bg-white/95 px-[max(8px,env(safe-area-inset-left))] pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur-2xl min-[901px]:sticky min-[901px]:top-6 min-[901px]:right-auto min-[901px]:bottom-auto min-[901px]:left-auto min-[901px]:col-start-1 min-[901px]:row-start-1 min-[901px]:row-span-4 min-[901px]:flex min-[901px]:min-h-[calc(100svh-48px)] min-[901px]:flex-col min-[901px]:self-start min-[901px]:border-t-0 min-[901px]:border-r min-[901px]:bg-transparent min-[901px]:p-0 min-[901px]:pr-3.5 min-[901px]:backdrop-blur-none"
 		aria-label="注文ナビゲーション"
 	>
 		{#each tabItems as tab}
@@ -917,10 +917,6 @@
 				{/if}
 			</button>
 		{/each}
-		<a class="relative flex min-h-[54px] flex-col items-center justify-center gap-1 rounded-lg p-1 text-center text-[11px] font-extrabold text-slate-700 no-underline transition hover:bg-slate-950 hover:text-white min-[901px]:min-h-[46px] min-[901px]:w-full min-[901px]:flex-row min-[901px]:justify-start min-[901px]:gap-3 min-[901px]:rounded-full min-[901px]:px-4 min-[901px]:text-left min-[901px]:text-sm" href={`/sessions/${sessionId}/ai`}>
-			<span class="i-tabler-sparkles text-[22px]" aria-hidden="true"></span>
-			<span>zeriyaGPT</span>
-		</a>
 	</nav>
 </main>
 
