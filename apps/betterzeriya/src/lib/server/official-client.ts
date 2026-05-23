@@ -36,16 +36,14 @@ export interface OfficialSessionSnapshot {
   updatedAt: number
 }
 
-interface SessionRecord {
-  client: AnyOfficialClient
-  getCookies: () => CookieEntry[]
-  mode: 'fetch' | 'browser'
+interface BrowserSessionRecord {
+  client: BrowserOfficialClient
   close?: () => Promise<void>
   createdAt: number
   updatedAt: number
 }
 
-const sessions = new Map<string, SessionRecord>()
+const browserSessions = new Map<string, BrowserSessionRecord>()
 const sessionTtlMs = 1000 * 60 * 60 * 6
 const useBrowserMode = () => env.BROWSER === '1'
 const browserLaunchOptions = () => ({
@@ -55,10 +53,10 @@ const browserLaunchOptions = () => ({
 
 const pruneSessions = () => {
   const now = Date.now()
-  for (const [id, session] of sessions) {
+  for (const [id, session] of browserSessions) {
     if (now - session.updatedAt > sessionTtlMs) {
       void session.close?.()
-      sessions.delete(id)
+      browserSessions.delete(id)
     }
   }
 }
@@ -102,9 +100,9 @@ const createCookieFetch = (initialCookies: CookieEntry[] = []) => {
   }
 }
 
-const touch = (id: string, session: SessionRecord) => {
+const touchBrowserSession = (id: string, session: BrowserSessionRecord) => {
   session.updatedAt = Date.now()
-  sessions.set(id, session)
+  browserSessions.set(id, session)
   return session
 }
 
@@ -119,15 +117,13 @@ export const createOfficialSession = async (qrURLSource: string) => {
       qrURLSource,
       launchOptions: browserLaunchOptions(),
     })
-    const session: SessionRecord = {
+    const session: BrowserSessionRecord = {
       client,
-      getCookies: () => [],
-      mode: 'browser',
       close: () => client.close(),
       createdAt: now,
       updatedAt: now,
     }
-    sessions.set(id, session)
+    browserSessions.set(id, session)
     return {
       id,
       state: client.getState(),
@@ -140,14 +136,6 @@ export const createOfficialSession = async (qrURLSource: string) => {
     qrURLSource,
     fetchSource: cookieFetch.fetchSource,
   })
-  const session: SessionRecord = {
-    client,
-    getCookies: cookieFetch.getCookies,
-    mode: 'fetch',
-    createdAt: now,
-    updatedAt: now,
-  }
-  sessions.set(id, session)
   return {
     id,
     state: client.getState(),
@@ -155,13 +143,13 @@ export const createOfficialSession = async (qrURLSource: string) => {
   }
 }
 
-export const getOfficialSession = (id: string) => {
+export const getBrowserSession = (id: string) => {
   pruneSessions()
-  const session = sessions.get(id)
+  const session = browserSessions.get(id)
   if (!session) {
     throw new Error('Session not found')
   }
-  return touch(id, session)
+  return touchBrowserSession(id, session)
 }
 
 const createSnapshot = (
@@ -194,34 +182,26 @@ export const parseOfficialSessionSnapshot = (
 
 const createClientFromSnapshot = async (id: string, snapshot?: OfficialSessionSnapshot) => {
   if (useBrowserMode()) {
-    const session = getOfficialSession(id)
-    if (session.mode !== 'browser') {
-      throw new Error('Browser session not found')
-    }
+    const session = getBrowserSession(id)
     return {
       client: session.client,
       getSnapshot: () => createSnapshot(id, session.client, [], session.createdAt, 'browser'),
     }
   }
 
-  if (snapshot?.id === id) {
-    const cookieFetch = createCookieFetch(snapshot.cookies)
-    const client = await createClient({
-      initialState: snapshot.state,
-      fetchSource: cookieFetch.fetchSource,
-    })
-    return {
-      client,
-      getSnapshot: () =>
-        createSnapshot(id, client, cookieFetch.getCookies(), snapshot.createdAt, 'fetch'),
-    }
+  if (snapshot?.id !== id) {
+    throw new Error('Session snapshot not found')
   }
 
-  const session = getOfficialSession(id)
+  const cookieFetch = createCookieFetch(snapshot.cookies)
+  const client = await createClient({
+    initialState: snapshot.state,
+    fetchSource: cookieFetch.fetchSource,
+  })
   return {
-    client: session.client,
+    client,
     getSnapshot: () =>
-      createSnapshot(id, session.client, session.getCookies(), session.createdAt, session.mode),
+      createSnapshot(id, client, cookieFetch.getCookies(), snapshot.createdAt, 'fetch'),
   }
 }
 

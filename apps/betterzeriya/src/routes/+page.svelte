@@ -60,10 +60,22 @@
 		return QrScanner;
 	};
 
-	const officialSessionStorageKey = (id: string) => `betterzeriya:${id}:official-session`;
+	const officialSessionsStorageKey = 'betterzeriya:official-sessions';
+
+	const readOfficialSessions = (): Record<string, OfficialSessionSnapshot> => {
+		try {
+			const raw = localStorage.getItem(officialSessionsStorageKey);
+			return raw ? (JSON.parse(raw) as Record<string, OfficialSessionSnapshot>) : {};
+		} catch {
+			localStorage.removeItem(officialSessionsStorageKey);
+			return {};
+		}
+	};
 
 	const saveOfficialSession = (snapshot: OfficialSessionSnapshot) => {
-		sessionStorage.setItem(officialSessionStorageKey(snapshot.id), JSON.stringify(snapshot));
+		const sessions = readOfficialSessions();
+		sessions[snapshot.id] = snapshot;
+		localStorage.setItem(officialSessionsStorageKey, JSON.stringify(sessions));
 	};
 
 	async function requestJSON<T>(path: string, body?: unknown): Promise<T> {

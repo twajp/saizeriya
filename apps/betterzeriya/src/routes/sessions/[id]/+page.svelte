@@ -154,7 +154,7 @@
 	let excludeAlcoholFromGacha = $state(false);
 
 	const cartStorageKey = $derived(`betterzeriya:${sessionId}:cart`);
-	const officialSessionStorageKey = $derived(`betterzeriya:${sessionId}:official-session`);
+	const officialSessionsStorageKey = 'betterzeriya:official-sessions';
 	const serviceMenu = $derived(filterMenuForServicePeriod(menu, currentMenuPeriod));
 	const categories = $derived(['すべて', ...new Set(serviceMenu.map((item) => item.category))]);
 	const filteredMenu = $derived(
@@ -189,24 +189,36 @@
 		}, 2800);
 	};
 
+	const readOfficialSessions = (): Record<string, OfficialSessionSnapshot> => {
+		try {
+			const raw = localStorage.getItem(officialSessionsStorageKey);
+			return raw ? (JSON.parse(raw) as Record<string, OfficialSessionSnapshot>) : {};
+		} catch {
+			localStorage.removeItem(officialSessionsStorageKey);
+			return {};
+		}
+	};
+
+	const writeOfficialSessions = (sessions: Record<string, OfficialSessionSnapshot>) => {
+		localStorage.setItem(officialSessionsStorageKey, JSON.stringify(sessions));
+	};
+
 	const saveOfficialSession = (snapshot: OfficialSessionSnapshot) => {
 		officialSession = snapshot;
-		sessionStorage.setItem(officialSessionStorageKey, JSON.stringify(snapshot));
+		const sessions = readOfficialSessions();
+		sessions[snapshot.id] = snapshot;
+		writeOfficialSessions(sessions);
 	};
 
 	const restoreOfficialSession = () => {
-		const raw = sessionStorage.getItem(officialSessionStorageKey);
-		if (!raw) {
+		const sessions = readOfficialSessions();
+		const parsed = sessions[sessionId];
+		if (parsed?.id === sessionId && parsed.state?.baseURL && Array.isArray(parsed.cookies)) {
+			officialSession = parsed;
 			return;
 		}
-		try {
-			const parsed = JSON.parse(raw) as OfficialSessionSnapshot;
-			if (parsed.id === sessionId && parsed.state?.baseURL && Array.isArray(parsed.cookies)) {
-				officialSession = parsed;
-			}
-		} catch {
-			sessionStorage.removeItem(officialSessionStorageKey);
-		}
+		delete sessions[sessionId];
+		writeOfficialSessions(sessions);
 	};
 
 	const statusLabel = (status: MenuStatus | undefined) => {
@@ -337,10 +349,10 @@
 
 	const saveCart = () => {
 		if (localCart.length === 0) {
-			sessionStorage.removeItem(cartStorageKey);
+			localStorage.removeItem(cartStorageKey);
 			return;
 		}
-		sessionStorage.setItem(cartStorageKey, JSON.stringify(localCart));
+		localStorage.setItem(cartStorageKey, JSON.stringify(localCart));
 	};
 
 	const commitCart = (nextCart: CartItem[]) => {
@@ -350,7 +362,7 @@
 	};
 
 	const restoreCart = () => {
-		const rawCart = sessionStorage.getItem(cartStorageKey);
+		const rawCart = localStorage.getItem(cartStorageKey);
 		if (!rawCart) {
 			return;
 		}
@@ -383,7 +395,7 @@
 			saveCart();
 		} catch {
 			localCart = [];
-			sessionStorage.removeItem(cartStorageKey);
+			localStorage.removeItem(cartStorageKey);
 		}
 	};
 
