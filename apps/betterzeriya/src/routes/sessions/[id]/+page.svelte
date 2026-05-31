@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { readJSONResponse } from '$lib/api-client';
 	import AppDialog from '$lib/components/AppDialog.svelte';
 	import defaultMenuData from '$lib/assets/data/menu.json';
 	import { calculateExactBudgetGacha, type ExactBudgetSelection } from '$lib/gacha';
@@ -332,10 +333,7 @@
 				headers: body ? { 'content-type': 'application/json' } : undefined,
 				body: body ? JSON.stringify(body) : undefined
 			});
-			const payload = await response.json();
-			if (!response.ok) {
-				throw new Error(payload.error ?? 'Request failed');
-			}
+			const payload = await readJSONResponse<T & { officialSession?: OfficialSessionSnapshot }>(response);
 			if (payload.officialSession) {
 				saveOfficialSession(payload.officialSession as OfficialSessionSnapshot);
 			}
@@ -390,13 +388,12 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ code, officialSession })
 		});
-		const result = (await response.json()) as LookupItemResult & {
+		const result = await readJSONResponse<
+			LookupItemResult & {
 			error?: string;
 			officialSession?: OfficialSessionSnapshot;
-		};
-		if (!response.ok) {
-			throw new Error(result.error ?? 'Request failed');
-		}
+			}
+		>(response);
 		if (result.officialSession) {
 			saveOfficialSession(result.officialSession as OfficialSessionSnapshot);
 		}

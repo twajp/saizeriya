@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { readJSONResponse } from '$lib/api-client';
 	import AppDialog from '$lib/components/AppDialog.svelte';
 	import { onDestroy, onMount } from 'svelte';
 
@@ -88,11 +89,7 @@
 				headers: body ? { 'content-type': 'application/json' } : undefined,
 				body: body ? JSON.stringify(body) : undefined
 			});
-			const payload = await response.json();
-			if (!response.ok) {
-				throw new Error(payload.error ?? 'Request failed');
-			}
-			return payload as T;
+			return await readJSONResponse<T>(response);
 		} catch (caught) {
 			error = caught instanceof Error ? caught.message : '通信に失敗しました';
 			throw caught;

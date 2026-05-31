@@ -20,14 +20,51 @@ const apiEntry =
 const start = (name, command, args, env) => {
   const child = spawn(command, args, {
     env: { ...process.env, ...env },
-    stdio: ['ignore', 'inherit', 'inherit'],
+    stdio: ['ignore', 'pipe', 'pipe'],
   })
+  const pipeLog = (stream, writer) => {
+    let pending = ''
+    stream.on('data', (chunk) => {
+      pending += chunk.toString()
+      const lines = pending.split(/\r?\n/)
+      pending = lines.pop() ?? ''
+      for (const line of lines) {
+        if (/Listening on:? .*127\.0\.0\.1/.test(line)) {
+          continue
+        }
+        writer.write(`[${name}] ${line}\n`)
+      }
+    })
+  }
+  pipeLog(child.stdout, process.stdout)
+  pipeLog(child.stderr, process.stderr)
   child.on('exit', (code, signal) => {
     console.error(`${name} exited`, { code, signal })
     process.exit(code ?? 1)
   })
   return child
 }
+
+const waitForPort = (port) =>
+  new Promise((resolve, reject) => {
+    const deadline = Date.now() + 15_000
+    const attempt = () => {
+      const socket = net.connect(port, '127.0.0.1')
+      socket.on('connect', () => {
+        socket.end()
+        resolve()
+      })
+      socket.on('error', (error) => {
+        socket.destroy()
+        if (Date.now() > deadline) {
+          reject(error)
+          return
+        }
+        setTimeout(attempt, 100)
+      })
+    }
+    attempt()
+  })
 
 const proxyRequest = (targetPort, request, response) => {
   const proxy = http.request(
@@ -72,7 +109,7 @@ const proxyUpgrade = (targetPort, request, socket, head) => {
   upstream.on('error', () => socket.destroy())
 }
 
-start('betterzeriya', 'node', [svelteEntry], {
+start('betterzeriya-app', 'node', [svelteEntry], {
   HOST: '127.0.0.1',
   PORT: String(sveltePort),
 })
@@ -91,6 +128,9 @@ server.on('upgrade', (request, socket, head) => {
   proxyUpgrade(targetPort, request, socket, head)
 })
 
+await Promise.all([waitForPort(sveltePort), waitForPort(apiPort)])
+
 server.listen(publicPort, '0.0.0.0', () => {
-  console.log(`betterzeriya listening on http://0.0.0.0:${publicPort}`)
+  const host = process.env.HOST && process.env.HOST !== '0.0.0.0' ? process.env.HOST : 'localhost'
+  console.log(`betterzeriya listening on http://${host}:${publicPort}`)
 })
